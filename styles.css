@@ -203,6 +203,13 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+#timeLeft {
+  color: var(--current-text);
+  font-size: 16px;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
 #nextTask {
   color: var(--current-text);
   font-size: 14px;
@@ -239,13 +246,26 @@ h2 {
   transition: width 180ms ease;
 }
 
-.color-row {
-  padding-top: 2px;
-}
-
 .color-swatches {
   display: flex;
   gap: 8px;
+}
+
+.settings-panel {
+  margin: 16px 0 0;
+  padding-bottom: 8px;
+}
+
+.color-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
 }
 
 .swatch {
@@ -665,6 +685,10 @@ h2 {
 @media (max-width: 390px) {
   #nowTask {
     font-size: 27px;
+  }
+
+  #timeLeft {
+    font-size: 15px;
   }
 
   #nextTask {

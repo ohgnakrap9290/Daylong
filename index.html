@@ -29,6 +29,7 @@
           <span class="status-label">현재 일정</span>
           <div class="now-copy">
             <strong id="nowTask">확인 중</strong>
+            <span id="timeLeft">남은 시간 확인 중</span>
             <span id="nextTask">다음 일정 확인 중</span>
           </div>
         </div>
@@ -42,15 +43,6 @@
         </div>
         <div class="progress-track" aria-hidden="true">
           <span id="progressFill"></span>
-        </div>
-        <div class="color-row" aria-label="현재 일정 강조색">
-          <span class="status-label">강조색</span>
-          <div class="color-swatches">
-            <button class="swatch is-active" type="button" data-current-color="blue" aria-label="파란색"></button>
-            <button class="swatch" type="button" data-current-color="mint" aria-label="민트색"></button>
-            <button class="swatch" type="button" data-current-color="rose" aria-label="로즈색"></button>
-            <button class="swatch" type="button" data-current-color="slate" aria-label="슬레이트색"></button>
-          </div>
         </div>
       </section>
 
@@ -77,6 +69,18 @@
             <input id="routineReminderTime" type="time" value="20:00" />
           </label>
           <div class="routine-list" id="routineList"></div>
+        </section>
+
+        <section class="settings-panel" aria-label="설정">
+          <div class="color-row" aria-label="현재 일정 강조색">
+            <span class="status-label">강조색</span>
+            <div class="color-swatches">
+              <button class="swatch is-active" type="button" data-current-color="blue" aria-label="파란색"></button>
+              <button class="swatch" type="button" data-current-color="mint" aria-label="민트색"></button>
+              <button class="swatch" type="button" data-current-color="rose" aria-label="로즈색"></button>
+              <button class="swatch" type="button" data-current-color="slate" aria-label="슬레이트색"></button>
+            </div>
+          </div>
         </section>
       </section>
 
@@ -166,6 +170,6 @@
 19:00 ~ 20:00 밥
 20:00 ~ 02:00 하고싶은거
     </script>
-    <script src="app.js?v=14"></script>
+    <script src="app.js?v=15"></script>
   </body>
 </html>

@@ -23,6 +23,7 @@ const state = {
 const els = {
   dateLabel: document.querySelector("#dateLabel"),
   nowTask: document.querySelector("#nowTask"),
+  timeLeft: document.querySelector("#timeLeft"),
   nextTask: document.querySelector("#nextTask"),
   doneCount: document.querySelector("#doneCount"),
   progressFill: document.querySelector("#progressFill"),
@@ -330,11 +331,14 @@ function updateProgress(events) {
 function updateNowTask(events, now) {
   const current = events.find((event) => isCurrent(event, now));
   const next = getNextEvent(events, now);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   if (current) {
     els.nowTask.textContent = current.title;
+    els.timeLeft.textContent = `${formatDuration(current.end - nowMinutes)} 남음`;
   } else {
     els.nowTask.textContent = next ? "대기 중" : "오늘 일정 끝";
+    els.timeLeft.textContent = next ? `${formatDuration(next.start - nowMinutes)} 뒤 시작` : "남은 일정 없음";
   }
 
   els.nextTask.textContent = next ? `다음 ${next.startLabel} · ${next.title}` : "다음 일정 없음";
@@ -489,6 +493,15 @@ function getMissingRoutines(dateKey) {
 function getNextEvent(events, now) {
   const minutes = now.getHours() * 60 + now.getMinutes();
   return events.find((event) => event.start > minutes);
+}
+
+function formatDuration(minutes) {
+  const safeMinutes = Math.max(0, minutes);
+  const hours = Math.floor(safeMinutes / 60);
+  const mins = safeMinutes % 60;
+  if (hours > 0 && mins > 0) return `${hours}시간 ${mins}분`;
+  if (hours > 0) return `${hours}시간`;
+  return `${mins}분`;
 }
 
 function getDateKey(date) {
