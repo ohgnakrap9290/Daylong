@@ -248,9 +248,12 @@ function eventTemplate(event, now, className) {
     : `<button class="check ${checked ? "is-checked" : ""}" type="button" aria-label="${escapeHtml(event.title)} 완료" data-id="${escapeAttr(event.id)}"></button>`;
 
   return `<${tag} class="${className} ${event.synthetic ? "is-sleep" : ""} ${current ? "is-current" : ""} ${checked ? "is-done" : ""}">
+    <span class="timeline-rail" aria-hidden="true"></span>
     <span class="time">${time}</span>
-    <span class="event-title">${escapeHtml(event.title)}${badge}</span>
-    ${checkButton}
+    <span class="event-card">
+      <span class="event-title">${escapeHtml(event.title)}${badge}</span>
+      ${checkButton}
+    </span>
   </${tag}>`;
 }
 
