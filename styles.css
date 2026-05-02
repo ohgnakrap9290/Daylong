@@ -134,15 +134,20 @@ h2 {
 
 .now-row {
   align-items: flex-start;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--line);
+  margin: -4px -4px 0;
+  padding: 16px;
+  border: 2px solid var(--current-line);
+  border-radius: 8px;
+  background: var(--current-bg);
+  box-shadow: 0 12px 30px rgba(245, 158, 11, 0.14);
 }
 
 #nowTask {
-  max-width: 72%;
-  color: var(--accent-strong);
-  font-size: 24px;
-  line-height: 1.18;
+  max-width: 74%;
+  color: var(--current-text);
+  font-size: 30px;
+  line-height: 1.08;
+  font-weight: 950;
   text-align: right;
   word-break: keep-all;
   overflow-wrap: anywhere;
@@ -323,9 +328,10 @@ h2 {
 }
 
 .event.is-current {
+  border-width: 2px;
   border-color: var(--current-line);
   background: var(--current-bg);
-  box-shadow: 0 12px 34px rgba(245, 158, 11, 0.16);
+  box-shadow: 0 16px 38px rgba(245, 158, 11, 0.2);
 }
 
 .event.is-current .event-title {
@@ -525,7 +531,7 @@ h2 {
 
 @media (max-width: 390px) {
   #nowTask {
-    font-size: 22px;
+    font-size: 27px;
   }
 }
 
