@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f8fafc" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="DayLong" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>DayLong</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" id="dateLabel">오늘</p>
+          <h1>DayLong</h1>
+        </div>
+        <button class="icon-button" id="themeToggle" type="button" aria-label="테마 변경">
+          <span aria-hidden="true">◐</span>
+        </button>
+      </header>
+
+      <section class="status-panel" aria-label="오늘 진행 상황">
+        <div class="now-row">
+          <span class="status-label">현재 일정</span>
+          <strong id="nowTask">확인 중</strong>
+        </div>
+        <div>
+          <span class="status-label">오늘 완료</span>
+          <strong id="doneCount">0/0</strong>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <span id="progressFill"></span>
+        </div>
+      </section>
+
+      <nav class="tabs" aria-label="보기 전환">
+        <button class="tab is-active" type="button" data-view="today">오늘</button>
+        <button class="tab" type="button" data-view="week">1주일</button>
+        <button class="tab" type="button" data-view="routine">오늘 루틴</button>
+      </nav>
+
+      <section class="view is-active" id="todayView" aria-label="오늘 타임라인">
+        <div class="section-title">
+          <h2 id="todayTitle">오늘 타임라인</h2>
+          <button class="text-button" id="resetToday" type="button">오늘 초기화</button>
+        </div>
+        <ol class="timeline" id="todayTimeline"></ol>
+
+        <section class="routine-panel" id="routinePanel" aria-label="오늘 루틴">
+          <div class="section-title">
+            <h2>오늘 루틴</h2>
+            <span class="routine-count" id="routineCount">0/5</span>
+          </div>
+          <div class="routine-list" id="routineList"></div>
+        </section>
+      </section>
+
+      <section class="view" id="weekView" aria-label="주간 일정">
+        <div class="week-strip" id="weekStrip"></div>
+        <div class="week-list" id="weekList"></div>
+      </section>
+    </main>
+
+    <script id="scheduleFallback" type="text/plain">
+📅 월요일
+00:00 ~ 02:00 하고싶은거 (일요일 이어짐)
+08:00 기상
+08:30 ~ 09:00 밥
+09:00 ~ 10:00 통학
+10:00 ~ 12:00 학술영어
+12:00 ~ 16:00 오토마타와형식언어론
+16:00 ~ 17:00 통학
+17:00 ~ 19:00 헬스
+19:00 ~ 20:00 밥
+20:00 ~ 02:00 공부
+📅 화요일
+00:00 ~ 02:00 공부 (월요일 이어짐)
+08:00 기상
+08:05 ~ 08:30 러닝
+08:30 ~ 09:00 밥
+09:00 ~ 09:30 준비
+09:30 ~ 11:30 공부
+11:30 ~ 12:00 점심
+12:00 ~ 12:30 청소/휴식
+12:30 ~ 14:00 카페공부
+14:00 ~ 15:40 헬스
+16:00 ~ 16:50 밥
+17:00 ~ 17:30 링크 알바
+18:00 ~ 03:00 마켓컬리
+📅 수요일
+00:00 ~ 03:00 마켓컬리
+08:30 기상
+08:30 ~ 09:00 밥
+09:00 ~ 10:00 통학
+10:00 ~ 13:00 확률과통계
+13:00 ~ 15:00 점심
+15:00 ~ 18:00 선형대수
+18:00 ~ 19:00 통학
+19:00 ~ 21:00 헬스
+21:00 ~ 22:00 밥
+22:00 ~ 02:00 공부
+📅 목요일
+00:00 ~ 02:00 공부 (수요일 이어짐)
+07:00 기상
+07:30 ~ 08:00 청소/휴식
+08:00 ~ 11:30 공부
+11:30 ~ 12:00 밥
+12:00 ~ 13:00 통학
+13:00 ~ 14:30 디지털논리설계
+15:00 ~ 17:00 LIONS 융합특강
+17:00 ~ 18:30 통학
+18:30 ~ 24:00 집
+📅 금요일
+00:00 ~ 10:00 집 (목요일 이어짐)
+10:00 ~ 11:30 이동
+11:30 ~ 12:00 점심
+12:00 ~ 14:00 헬스
+14:00 ~ 16:00 카페공부
+16:00 ~ 16:30 링크 알바
+16:30 ~ 17:40 밥
+18:00 ~ 03:00 마켓컬리
+📅 토요일
+00:00 ~ 03:00 마켓컬리
+09:00 기상
+09:00 ~ 09:30 밥
+09:30 ~ 10:00 청소/휴식
+10:00 ~ 12:00 공부
+12:00 ~ 13:00 밥
+13:00 ~ 15:00 헬스
+15:00 ~ 19:00 공부
+19:00 ~ 20:00 밥
+20:00 ~ 02:00 하고싶은거
+📅 일요일
+00:00 ~ 02:00 하고싶은거 (토요일 이어짐)
+10:00 기상
+10:05 ~ 10:30 러닝
+10:30 ~ 11:30 아침밥
+11:30 ~ 15:00 공부
+15:00 ~ 16:00 밥
+16:00 ~ 19:00 공부
+19:00 ~ 20:00 밥
+20:00 ~ 02:00 하고싶은거
+    </script>
+    <script src="app.js?v=9"></script>
+  </body>
+</html>
