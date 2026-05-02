@@ -186,13 +186,29 @@ h2 {
   box-shadow: 0 12px 30px var(--current-shadow);
 }
 
-#nowTask {
+.now-copy {
+  display: grid;
+  gap: 7px;
   max-width: 74%;
+  text-align: right;
+}
+
+#nowTask {
   color: var(--current-text);
   font-size: 30px;
   line-height: 1.08;
   font-weight: 950;
   text-align: right;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+#nextTask {
+  color: var(--current-text);
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.25;
+  opacity: 0.78;
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
@@ -324,6 +340,35 @@ h2 {
 .routine-list {
   display: grid;
   gap: 8px;
+}
+
+.routine-reminder {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.routine-reminder span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.routine-reminder input {
+  width: 112px;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-weight: 850;
 }
 
 .routine-item {
@@ -620,6 +665,10 @@ h2 {
 @media (max-width: 390px) {
   #nowTask {
     font-size: 27px;
+  }
+
+  #nextTask {
+    font-size: 13px;
   }
 }
 

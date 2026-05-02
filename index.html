@@ -27,7 +27,10 @@
       <section class="status-panel" aria-label="오늘 진행 상황">
         <div class="now-row">
           <span class="status-label">현재 일정</span>
-          <strong id="nowTask">확인 중</strong>
+          <div class="now-copy">
+            <strong id="nowTask">확인 중</strong>
+            <span id="nextTask">다음 일정 확인 중</span>
+          </div>
         </div>
         <div>
           <span class="status-label">오늘 완료</span>
@@ -69,6 +72,10 @@
             <h2>오늘 루틴</h2>
             <span class="routine-count" id="routineCount">0/5</span>
           </div>
+          <label class="routine-reminder">
+            <span>루틴 알림</span>
+            <input id="routineReminderTime" type="time" value="20:00" />
+          </label>
           <div class="routine-list" id="routineList"></div>
         </section>
       </section>
@@ -159,6 +166,6 @@
 19:00 ~ 20:00 밥
 20:00 ~ 02:00 하고싶은거
     </script>
-    <script src="app.js?v=13"></script>
+    <script src="app.js?v=14"></script>
   </body>
 </html>

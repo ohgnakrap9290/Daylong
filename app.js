@@ -14,6 +14,7 @@ const state = {
   activeView: "today",
   currentColor: localStorage.getItem("daylong-current-color") || "blue",
   notificationsEnabled: localStorage.getItem("daylong-notifications") === "enabled",
+  routineReminderTime: localStorage.getItem("daylong-routine-reminder-time") || "20:00",
   notificationTimers: [],
   checks: JSON.parse(localStorage.getItem("daylong-checks") || "{}"),
   routines: JSON.parse(localStorage.getItem("daylong-routines") || "{}"),
@@ -22,6 +23,7 @@ const state = {
 const els = {
   dateLabel: document.querySelector("#dateLabel"),
   nowTask: document.querySelector("#nowTask"),
+  nextTask: document.querySelector("#nextTask"),
   doneCount: document.querySelector("#doneCount"),
   progressFill: document.querySelector("#progressFill"),
   notifyToggle: document.querySelector("#notifyToggle"),
@@ -33,6 +35,7 @@ const els = {
   routinePanel: document.querySelector("#routinePanel"),
   routineCount: document.querySelector("#routineCount"),
   routineList: document.querySelector("#routineList"),
+  routineReminderTime: document.querySelector("#routineReminderTime"),
   weekStrip: document.querySelector("#weekStrip"),
   weekList: document.querySelector("#weekList"),
   themeToggle: document.querySelector("#themeToggle"),
@@ -46,6 +49,7 @@ async function init() {
   setCurrentColor(state.currentColor);
   registerServiceWorker();
   updateNotifyButton();
+  els.routineReminderTime.value = state.routineReminderTime;
   bindEvents();
 
   try {
@@ -86,6 +90,12 @@ function bindEvents() {
   });
 
   els.notifyToggle.addEventListener("click", enableNotifications);
+
+  els.routineReminderTime.addEventListener("change", () => {
+    state.routineReminderTime = els.routineReminderTime.value || "20:00";
+    localStorage.setItem("daylong-routine-reminder-time", state.routineReminderTime);
+    scheduleUpcomingNotifications(new Date());
+  });
 
   els.colorSwatches.forEach((button) => {
     button.addEventListener("click", () => {
@@ -319,14 +329,15 @@ function updateProgress(events) {
 
 function updateNowTask(events, now) {
   const current = events.find((event) => isCurrent(event, now));
+  const next = getNextEvent(events, now);
+
   if (current) {
     els.nowTask.textContent = current.title;
-    return;
+  } else {
+    els.nowTask.textContent = next ? "대기 중" : "오늘 일정 끝";
   }
 
-  const minutes = now.getHours() * 60 + now.getMinutes();
-  const next = events.find((event) => event.start > minutes);
-  els.nowTask.textContent = next ? `${next.startLabel} ${next.title}` : "오늘 일정 끝";
+  els.nextTask.textContent = next ? `다음 ${next.startLabel} · ${next.title}` : "다음 일정 없음";
 }
 
 async function enableNotifications() {
@@ -398,6 +409,31 @@ function scheduleUpcomingNotifications(now) {
 
     state.notificationTimers.push(timer);
   });
+
+  scheduleRoutineReminder(now, sent);
+}
+
+function scheduleRoutineReminder(now, sent) {
+  const reminderMinutes = toMinutes(state.routineReminderTime);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const todayKey = getDateKey(now);
+  const notificationKey = `${todayKey}-routine-reminder-${state.routineReminderTime}`;
+
+  if (sent[notificationKey] || reminderMinutes < nowMinutes) return;
+
+  const timer = setTimeout(() => {
+    const latestSent = JSON.parse(localStorage.getItem("daylong-sent-notifications") || "{}");
+    if (latestSent[notificationKey]) return;
+
+    const missing = getMissingRoutines(todayKey);
+    if (!missing.length) return;
+
+    showAppNotification("오늘 루틴 확인", `남은 루틴: ${missing.join(", ")}`);
+    latestSent[notificationKey] = true;
+    localStorage.setItem("daylong-sent-notifications", JSON.stringify(latestSent));
+  }, (reminderMinutes - nowMinutes) * 60 * 1000);
+
+  state.notificationTimers.push(timer);
 }
 
 async function showAppNotification(title, body) {
@@ -438,6 +474,21 @@ function getRoutineDoneCount(dateKey) {
     if (routine.type === "counter") return (dayState[routine.id] || 0) >= routine.target;
     return Boolean(dayState[routine.id]);
   }).length;
+}
+
+function getMissingRoutines(dateKey) {
+  const dayState = getRoutineDayState(dateKey);
+  return dailyRoutines
+    .filter((routine) => {
+      if (routine.type === "counter") return (dayState[routine.id] || 0) < routine.target;
+      return !dayState[routine.id];
+    })
+    .map((routine) => routine.label);
+}
+
+function getNextEvent(events, now) {
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  return events.find((event) => event.start > minutes);
 }
 
 function getDateKey(date) {
