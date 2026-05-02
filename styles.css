@@ -389,6 +389,12 @@ h2 {
   font-weight: 800;
 }
 
+.notify-button.is-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
 .timeline {
   display: grid;
   gap: 10px;

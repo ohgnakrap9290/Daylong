@@ -13,6 +13,8 @@ const state = {
   selectedDay: new Date().getDay(),
   activeView: "today",
   currentColor: localStorage.getItem("daylong-current-color") || "blue",
+  notificationsEnabled: localStorage.getItem("daylong-notifications") === "enabled",
+  notificationTimers: [],
   checks: JSON.parse(localStorage.getItem("daylong-checks") || "{}"),
   routines: JSON.parse(localStorage.getItem("daylong-routines") || "{}"),
 };
@@ -22,6 +24,7 @@ const els = {
   nowTask: document.querySelector("#nowTask"),
   doneCount: document.querySelector("#doneCount"),
   progressFill: document.querySelector("#progressFill"),
+  notifyToggle: document.querySelector("#notifyToggle"),
   colorSwatches: document.querySelectorAll(".swatch"),
   tabs: document.querySelectorAll(".tab"),
   views: document.querySelectorAll(".view"),
@@ -41,6 +44,8 @@ init();
 async function init() {
   setTheme(localStorage.getItem("daylong-theme") || getPreferredTheme());
   setCurrentColor(state.currentColor);
+  registerServiceWorker();
+  updateNotifyButton();
   bindEvents();
 
   try {
@@ -79,6 +84,8 @@ function bindEvents() {
   els.themeToggle.addEventListener("click", () => {
     setTheme(document.documentElement.classList.contains("dark") ? "light" : "dark");
   });
+
+  els.notifyToggle.addEventListener("click", enableNotifications);
 
   els.colorSwatches.forEach((button) => {
     button.addEventListener("click", () => {
@@ -155,6 +162,7 @@ function render() {
 
   renderToday(now);
   renderWeek();
+  scheduleUpcomingNotifications(now);
 }
 
 function renderToday(now) {
@@ -319,6 +327,97 @@ function updateNowTask(events, now) {
   const minutes = now.getHours() * 60 + now.getMinutes();
   const next = events.find((event) => event.start > minutes);
   els.nowTask.textContent = next ? `${next.startLabel} ${next.title}` : "오늘 일정 끝";
+}
+
+async function enableNotifications() {
+  if (!("Notification" in window)) {
+    els.notifyToggle.textContent = "미지원";
+    return;
+  }
+
+  if (Notification.permission === "denied") {
+    els.notifyToggle.textContent = "차단됨";
+    return;
+  }
+
+  const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+  if (permission !== "granted") {
+    updateNotifyButton();
+    return;
+  }
+
+  state.notificationsEnabled = true;
+  localStorage.setItem("daylong-notifications", "enabled");
+  updateNotifyButton();
+  scheduleUpcomingNotifications(new Date());
+  showAppNotification("DayLong 알림 켜짐", "다음 일정 10분 전에 알려줄게요.");
+}
+
+function updateNotifyButton() {
+  if (!("Notification" in window)) {
+    els.notifyToggle.textContent = "미지원";
+    return;
+  }
+
+  if (Notification.permission === "denied") {
+    els.notifyToggle.textContent = "차단됨";
+    return;
+  }
+
+  els.notifyToggle.textContent = state.notificationsEnabled && Notification.permission === "granted" ? "알림 켜짐" : "알림 켜기";
+  els.notifyToggle.classList.toggle("is-on", state.notificationsEnabled && Notification.permission === "granted");
+}
+
+function scheduleUpcomingNotifications(now) {
+  state.notificationTimers.forEach((timer) => clearTimeout(timer));
+  state.notificationTimers = [];
+
+  if (!state.notificationsEnabled || !("Notification" in window) || Notification.permission !== "granted") return;
+
+  const events = getCheckableEvents(getDayEvents(now.getDay()));
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const todayKey = getDateKey(now);
+  const sent = JSON.parse(localStorage.getItem("daylong-sent-notifications") || "{}");
+
+  events.forEach((event) => {
+    if (event.start < nowMinutes) return;
+
+    const notifyAt = event.start - 10;
+    const delayMinutes = Math.max(0, notifyAt - nowMinutes);
+    const notificationKey = `${todayKey}-${event.id}`;
+    if (sent[notificationKey]) return;
+
+    const timer = setTimeout(() => {
+      const latestSent = JSON.parse(localStorage.getItem("daylong-sent-notifications") || "{}");
+      if (latestSent[notificationKey]) return;
+
+      showAppNotification(`${event.startLabel} ${event.title}`, "10분 뒤 시작하는 일정입니다.");
+      latestSent[notificationKey] = true;
+      localStorage.setItem("daylong-sent-notifications", JSON.stringify(latestSent));
+    }, delayMinutes * 60 * 1000);
+
+    state.notificationTimers.push(timer);
+  });
+}
+
+async function showAppNotification(title, body) {
+  if ("serviceWorker" in navigator) {
+    const registration = await navigator.serviceWorker.ready;
+    registration.showNotification(title, {
+      body,
+      icon: "images.png?v=1",
+      badge: "images.png?v=1",
+      tag: `daylong-${title}`,
+    });
+    return;
+  }
+
+  new Notification(title, { body, icon: "images.png?v=1" });
+}
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator) || location.protocol !== "https:") return;
+  navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 
 function getDayEvents(dayIndex) {
