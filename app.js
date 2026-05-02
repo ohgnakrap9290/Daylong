@@ -12,6 +12,7 @@ const state = {
   schedule: [],
   selectedDay: new Date().getDay(),
   activeView: "today",
+  currentColor: localStorage.getItem("daylong-current-color") || "blue",
   checks: JSON.parse(localStorage.getItem("daylong-checks") || "{}"),
   routines: JSON.parse(localStorage.getItem("daylong-routines") || "{}"),
 };
@@ -21,6 +22,7 @@ const els = {
   nowTask: document.querySelector("#nowTask"),
   doneCount: document.querySelector("#doneCount"),
   progressFill: document.querySelector("#progressFill"),
+  colorSwatches: document.querySelectorAll(".swatch"),
   tabs: document.querySelectorAll(".tab"),
   views: document.querySelectorAll(".view"),
   todayTitle: document.querySelector("#todayTitle"),
@@ -38,6 +40,7 @@ init();
 
 async function init() {
   setTheme(localStorage.getItem("daylong-theme") || getPreferredTheme());
+  setCurrentColor(state.currentColor);
   bindEvents();
 
   try {
@@ -75,6 +78,12 @@ function bindEvents() {
 
   els.themeToggle.addEventListener("click", () => {
     setTheme(document.documentElement.classList.contains("dark") ? "light" : "dark");
+  });
+
+  els.colorSwatches.forEach((button) => {
+    button.addEventListener("click", () => {
+      setCurrentColor(button.dataset.currentColor);
+    });
   });
 
   els.resetToday.addEventListener("click", () => {
@@ -445,6 +454,15 @@ function setTheme(theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
   localStorage.setItem("daylong-theme", theme);
   document.querySelector('meta[name="theme-color"]').setAttribute("content", theme === "dark" ? "#101418" : "#f8fafc");
+}
+
+function setCurrentColor(color) {
+  state.currentColor = color;
+  document.documentElement.dataset.currentColor = color;
+  localStorage.setItem("daylong-current-color", color);
+  els.colorSwatches.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.currentColor === color);
+  });
 }
 
 function escapeHtml(value) {
