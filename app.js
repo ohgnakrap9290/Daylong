@@ -39,6 +39,7 @@ const els = {
   routineReminderTime: document.querySelector("#routineReminderTime"),
   weekStrip: document.querySelector("#weekStrip"),
   weekList: document.querySelector("#weekList"),
+  scrollTop: document.querySelector("#scrollTop"),
   themeToggle: document.querySelector("#themeToggle"),
   resetToday: document.querySelector("#resetToday"),
 };
@@ -52,6 +53,7 @@ async function init() {
   updateNotifyButton();
   els.routineReminderTime.value = state.routineReminderTime;
   bindEvents();
+  preventDoubleTapZoom();
 
   try {
     const text = await fetch("data.txt", { cache: "no-store" }).then((res) => {
@@ -88,6 +90,10 @@ function bindEvents() {
 
   els.themeToggle.addEventListener("click", () => {
     setTheme(document.documentElement.classList.contains("dark") ? "light" : "dark");
+  });
+
+  els.scrollTop.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
   els.notifyToggle.addEventListener("click", enableNotifications);
@@ -479,6 +485,22 @@ async function showAppNotification(title, body) {
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator) || location.protocol !== "https:") return;
   navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
+function preventDoubleTapZoom() {
+  let lastTouchEnd = 0;
+
+  document.addEventListener(
+    "touchend",
+    (event) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 350) {
+        event.preventDefault();
+      }
+      lastTouchEnd = now;
+    },
+    { passive: false },
+  );
 }
 
 function getDayEvents(dayIndex) {
