@@ -196,7 +196,24 @@ function renderToday(now) {
 }
 
 function renderWeek() {
-  els.weekStrip.innerHTML = state.schedule
+  const totalDone = state.schedule.reduce((sum, day) => {
+    const checkable = getCheckableEvents(day.events);
+    return sum + checkable.filter((event) => state.checks[event.id]).length;
+  }, 0);
+  const totalEvents = state.schedule.reduce((sum, day) => sum + getCheckableEvents(day.events).length, 0);
+
+  els.weekStrip.innerHTML = `<div class="week-summary">
+    <div>
+      <span>이번 주 완료</span>
+      <strong>${totalDone}/${totalEvents}</strong>
+    </div>
+    <div>
+      <span>오늘</span>
+      <strong>${shortDays[new Date().getDay()]}</strong>
+    </div>
+  </div>
+  <div class="day-chips">
+    ${state.schedule
     .map((day) => {
       const checkable = getCheckableEvents(day.events);
       const done = checkable.filter((event) => state.checks[event.id]).length;
@@ -204,7 +221,8 @@ function renderWeek() {
         ${shortDays[day.index]}<span>${done}/${checkable.length}</span>
       </button>`;
     })
-    .join("");
+    .join("")}
+  </div>`;
 
   els.weekStrip.querySelectorAll(".day-chip").forEach((button) => {
     button.addEventListener("click", () => {
