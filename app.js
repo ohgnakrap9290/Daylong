@@ -141,9 +141,16 @@ function parseSchedule(text) {
       const range = line.match(/^(\d{2}:\d{2})(?:\s*~\s*(\d{2}:\d{2}))?\s+(.+)$/);
       if (!range) return;
 
-      const start = toMinutes(range[1]);
-      const end = range[2] ? normalizeEnd(start, toMinutes(range[2])) : start + 10;
+      let start = toMinutes(range[1]);
+      let end = range[2] ? normalizeEnd(start, toMinutes(range[2])) : start + 10;
       const title = range[3].trim();
+      const previousEvent = current.events.at(-1);
+
+      if (previousEvent?.end > 1440 && start < 300) {
+        start += 1440;
+        end += 1440;
+      }
+
       const id = `${current.name}-${range[1]}-${range[2] || "single"}-${title}`;
 
       current.events.push({
@@ -612,7 +619,11 @@ function addSleepBlocks(schedule) {
 
 function getPreviousOvernightEnd(day) {
   if (!day) return 0;
-  const end = day.events.reduce((latest, event) => (event.end > 1440 ? Math.max(latest, event.end - 1440) : latest), 0);
+  const end = day.events.reduce((latest, event) => {
+    if (event.end > 1440) return Math.max(latest, event.end - 1440);
+    if (event.start < 300) return Math.max(latest, event.end);
+    return latest;
+  }, 0);
   return end;
 }
 
