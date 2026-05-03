@@ -29,7 +29,7 @@ export default async function handler(request, response) {
     const todayEvents = schedule.find((day) => day.index === now.day)?.events || [];
     const dueEvents = todayEvents.filter((event) => {
       const notifyAt = event.start - 10;
-      return notifyAt <= now.minutes && notifyAt > now.minutes - 2;
+      return notifyAt <= now.minutes && notifyAt > now.minutes - 6;
     });
 
     let sent = 0;
@@ -91,7 +91,7 @@ async function sendPush(record, payload) {
 async function maybeSendRoutineReminder(record, now) {
   const reminderTime = record.routineReminderTime || "20:00";
   const reminderMinutes = toMinutes(reminderTime);
-  if (reminderMinutes > now.minutes || reminderMinutes <= now.minutes - 2) return false;
+  if (reminderMinutes > now.minutes || reminderMinutes <= now.minutes - 6) return false;
 
   const key = `daylong:sent:${now.dateKey}:${record.id}:routine:${reminderTime}`;
   const firstSend = await markOnce(key);
