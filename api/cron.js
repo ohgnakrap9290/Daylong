@@ -1,5 +1,5 @@
 import webpush from "web-push";
-import { kvCommand, kvPipeline } from "./_lib/kv.js";
+import { getRedis, getSubscriptionRecords } from "./_lib/redis.js";
 import { getKstNow, readSchedule, toMinutes } from "./_lib/schedule.js";
 
 const VAPID_PUBLIC_KEY =
@@ -22,8 +22,9 @@ export default async function handler(request, response) {
   webpush.setVapidDetails("mailto:daylong@example.com", VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
 
   try {
-    const ids = (await kvCommand(["SMEMBERS", "daylong:subscriptions"])) || [];
-    const records = await loadSubscriptionRecords(ids);
+    const redis = await getRedis();
+    const ids = (await redis.sMembers("push:subscriptions")) || [];
+    const records = await getSubscriptionRecords(ids);
     const now = getKstNow();
     const schedule = readSchedule();
     const todayEvents = schedule.find((day) => day.index === now.day)?.events || [];
@@ -61,14 +62,12 @@ export default async function handler(request, response) {
   }
 }
 
-async function loadSubscriptionRecords(ids) {
-  if (!ids.length) return [];
-  const values = await kvPipeline(ids.map((id) => ["GET", `daylong:subscription:${id}`]));
-  return values.filter(Boolean).map((value) => JSON.parse(value));
-}
-
 async function markOnce(key) {
-  const result = await kvCommand(["SET", key, "1", "EX", 60 * 60 * 24 * 3, "NX"]);
+  const redis = await getRedis();
+  const result = await redis.set(key, "1", {
+    EX: 60 * 60 * 24 * 3,
+    NX: true,
+  });
   return result === "OK";
 }
 
@@ -78,10 +77,12 @@ async function sendPush(record, payload) {
     return true;
   } catch (error) {
     if (error.statusCode === 404 || error.statusCode === 410) {
-      await kvPipeline([
-        ["SREM", "daylong:subscriptions", record.id],
-        ["DEL", `daylong:subscription:${record.id}`],
-      ]);
+      const redis = await getRedis();
+      await redis
+        .multi()
+        .sRem("push:subscriptions", record.id)
+        .del(`push:subscription:${record.id}`)
+        .exec();
       return "removed";
     }
     return false;

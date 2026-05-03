@@ -4,6 +4,6 @@ const VAPID_PUBLIC_KEY =
 export default function handler(request, response) {
   response.status(200).json({
     vapidPublicKey: VAPID_PUBLIC_KEY,
-    pushConfigured: Boolean(process.env.VAPID_PRIVATE_KEY && process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN),
+    pushConfigured: Boolean(process.env.VAPID_PRIVATE_KEY && process.env.REDIS_URL),
   });
 }

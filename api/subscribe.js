@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { kvCommand, kvPipeline } from "./_lib/kv.js";
+import { getRedis } from "./_lib/redis.js";
 
 export default async function handler(request, response) {
   if (request.method !== "POST" && request.method !== "DELETE") {
@@ -9,6 +9,7 @@ export default async function handler(request, response) {
   }
 
   try {
+    const redis = await getRedis();
     const body = typeof request.body === "string" ? JSON.parse(request.body) : request.body;
     const subscription = body?.subscription;
     if (!subscription?.endpoint) {
@@ -19,15 +20,16 @@ export default async function handler(request, response) {
     const id = createHash("sha256").update(subscription.endpoint).digest("hex");
 
     if (request.method === "DELETE") {
-      await kvPipeline([
-        ["SREM", "daylong:subscriptions", id],
-        ["DEL", `daylong:subscription:${id}`],
-      ]);
+      await redis
+        .multi()
+        .sRem("push:subscriptions", id)
+        .del(`push:subscription:${id}`)
+        .exec();
       response.status(200).json({ ok: true });
       return;
     }
 
-    const existingRaw = await kvCommand(["GET", `daylong:subscription:${id}`]);
+    const existingRaw = await redis.get(`push:subscription:${id}`);
     const existing = existingRaw ? JSON.parse(existingRaw) : {};
     const record = {
       ...existing,
@@ -41,10 +43,11 @@ export default async function handler(request, response) {
       createdAt: existing.createdAt || new Date().toISOString(),
     };
 
-    await kvPipeline([
-      ["SADD", "daylong:subscriptions", id],
-      ["SET", `daylong:subscription:${id}`, JSON.stringify(record)],
-    ]);
+    await redis
+      .multi()
+      .sAdd("push:subscriptions", id)
+      .set(`push:subscription:${id}`, JSON.stringify(record))
+      .exec();
 
     response.status(200).json({ ok: true, id });
   } catch (error) {
