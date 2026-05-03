@@ -102,6 +102,7 @@ function bindEvents() {
     state.routineReminderTime = els.routineReminderTime.value || "20:00";
     localStorage.setItem("daylong-routine-reminder-time", state.routineReminderTime);
     scheduleUpcomingNotifications(new Date());
+    syncPushSubscription().catch(() => {});
   });
 
   els.colorSwatches.forEach((button) => {
@@ -333,6 +334,7 @@ function renderRoutines(now) {
       if (!current[button.dataset.routine]) delete current[button.dataset.routine];
       state.routines[dateKey] = current;
       saveRoutines();
+      syncPushSubscription().catch(() => {});
       render();
     });
   });
@@ -345,6 +347,7 @@ function renderRoutines(now) {
       current[routine.id] = next;
       state.routines[dateKey] = current;
       saveRoutines();
+      syncPushSubscription().catch(() => {});
       render();
     });
   });
@@ -399,7 +402,13 @@ async function enableNotifications() {
   localStorage.setItem("daylong-notifications", "enabled");
   updateNotifyButton();
   scheduleUpcomingNotifications(new Date());
-  showAppNotification("DayLong 알림 켜짐", "다음 일정 10분 전에 알려줄게요.");
+
+  try {
+    await syncPushSubscription();
+    showAppNotification("DayLong 알림 켜짐", "앱이 꺼져 있어도 서버가 일정 10분 전에 알려줄게요.");
+  } catch (error) {
+    showAppNotification("DayLong 알림 켜짐", "앱이 열려 있을 때 일정 10분 전에 알려줄게요.");
+  }
 }
 
 function updateNotifyButton() {
@@ -487,6 +496,54 @@ async function showAppNotification(title, body) {
   }
 
   new Notification(title, { body, icon: "images.png?v=1" });
+}
+
+async function syncPushSubscription() {
+  if (!state.notificationsEnabled || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  if (Notification.permission !== "granted") return;
+
+  const config = await fetch("/api/config", { cache: "no-store" }).then((response) => response.json());
+  if (!config.vapidPublicKey || !config.pushConfigured) {
+    throw new Error("Server push is not configured.");
+  }
+
+  const registration = await navigator.serviceWorker.ready;
+  const existing = await registration.pushManager.getSubscription();
+  const subscription =
+    existing ||
+    (await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(config.vapidPublicKey),
+    }));
+
+  const response = await fetch("/api/subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      subscription,
+      timezone: "Asia/Seoul",
+      routineReminderTime: state.routineReminderTime,
+      routines: state.routines,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || "Subscription sync failed.");
+  }
+}
+
+function urlBase64ToUint8Array(value) {
+  const padding = "=".repeat((4 - (value.length % 4)) % 4);
+  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  const output = new Uint8Array(rawData.length);
+
+  for (let index = 0; index < rawData.length; index += 1) {
+    output[index] = rawData.charCodeAt(index);
+  }
+
+  return output;
 }
 
 function registerServiceWorker() {
