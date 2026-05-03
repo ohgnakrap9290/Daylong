@@ -10,6 +10,7 @@ export function readSchedule() {
 export function parseSchedule(text) {
   const days = [];
   let current = null;
+  const carryovers = [];
 
   text
     .split(/\r?\n/)
@@ -28,14 +29,23 @@ export function parseSchedule(text) {
       const range = line.match(/^(\d{2}:\d{2})(?:\s*~\s*(\d{2}:\d{2}))?\s+(.+)$/);
       if (!range) return;
 
-      let start = toMinutes(range[1]);
+      const start = toMinutes(range[1]);
       let end = range[2] ? normalizeEnd(start, toMinutes(range[2])) : start + 10;
       const title = range[3].trim();
-      const previousEvent = current.events.at(-1);
+      let endLabel = range[2] || "";
 
-      if (previousEvent?.end > 1440 && start < 300) {
-        start += 1440;
-        end += 1440;
+      if (end > 1440) {
+        carryovers.push({
+          fromDay: current.index,
+          start: 0,
+          end: end - 1440,
+          startLabel: "00:00",
+          endLabel: toTimeLabel(end - 1440),
+          title,
+          sourceStartLabel: range[1],
+        });
+        end = 1440;
+        endLabel = "24:00";
       }
 
       current.events.push({
@@ -44,14 +54,15 @@ export function parseSchedule(text) {
         start,
         end,
         startLabel: range[1],
-        endLabel: range[2] || "",
+        endLabel,
         title,
       });
     });
 
-  return removeCarryoverDuplicates(
-    dayNames.map((name, index) => days.find((day) => day.index === index) || { name, index, events: [] }),
-  );
+  const schedule = dayNames.map((name, index) => days.find((day) => day.index === index) || { name, index, events: [] });
+  applyCarryovers(schedule, carryovers);
+  addWeekdayFreeBlocks(schedule, new Set(carryovers.map((carryover) => carryover.fromDay)));
+  return schedule;
 }
 
 export function getKstNow(date = new Date()) {
@@ -73,24 +84,72 @@ function normalizeEnd(start, end) {
   return end <= start ? end + 1440 : end;
 }
 
-function removeCarryoverDuplicates(schedule) {
-  return schedule.map((day) => {
-    const prevDay = schedule[(day.index + 6) % 7];
-    const events = day.events.filter((event) => {
-      if (event.title.includes("이어짐")) return false;
-      if (event.start !== 0 || !prevDay) return true;
+function applyCarryovers(schedule, carryovers) {
+  carryovers.forEach((carryover) => {
+    const dayIndex = (carryover.fromDay + 1) % 7;
+    const day = schedule[dayIndex];
 
-      return !prevDay.events.some((prev) => {
-        const sameTitle = normalizeTitle(prev.title) === normalizeTitle(event.title);
-        const prevOvernightEnd = prev.end > 1440 ? prev.end - 1440 : 0;
-        return sameTitle && prevOvernightEnd >= event.end;
-      });
+    day.events.unshift({
+      id: `${day.name}-carry-${carryover.sourceStartLabel}-${carryover.endLabel}-${carryover.title}`,
+      day: day.index,
+      start: carryover.start,
+      end: carryover.end,
+      startLabel: carryover.startLabel,
+      endLabel: carryover.endLabel,
+      title: carryover.title,
     });
 
-    return { ...day, events };
+    const freeStart = carryover.end;
+    const freeEnd = Math.min(1440, freeStart + 30);
+    if (isWeekday(carryover.fromDay) && freeEnd > freeStart) {
+      day.events.push({
+        id: `${day.name}-free-${freeStart}-${freeEnd}`,
+        day: day.index,
+        start: freeStart,
+        end: freeEnd,
+        startLabel: toTimeLabel(freeStart),
+        endLabel: toTimeLabel(freeEnd),
+        title: "자유시간",
+      });
+    }
+
+    day.events.sort((a, b) => a.start - b.start);
   });
 }
 
-function normalizeTitle(title) {
-  return title.replace(/\s*\(.+?\)\s*/g, "").trim();
+function addWeekdayFreeBlocks(schedule, carryoverSourceDays) {
+  schedule.forEach((day) => {
+    if (!isWeekday(day.index) || carryoverSourceDays.has(day.index)) return;
+
+    const latest = day.events.reduce((candidate, event) => (!candidate || event.end > candidate.end ? event : candidate), null);
+    if (!latest || latest.title === "자유시간") return;
+
+    const targetDay = latest.end >= 1440 ? schedule[(day.index + 1) % 7] : day;
+    const freeStart = latest.end >= 1440 ? 0 : latest.end;
+    const freeEnd = Math.min(1440, freeStart + 30);
+    const exists = targetDay.events.some((event) => event.title === "자유시간" && event.start === freeStart);
+    if (exists || freeEnd <= freeStart) return;
+
+    targetDay.events.push({
+      id: `${targetDay.name}-free-${freeStart}-${freeEnd}`,
+      day: targetDay.index,
+      start: freeStart,
+      end: freeEnd,
+      startLabel: toTimeLabel(freeStart),
+      endLabel: toTimeLabel(freeEnd),
+      title: "자유시간",
+    });
+    targetDay.events.sort((a, b) => a.start - b.start);
+  });
+}
+
+function isWeekday(dayIndex) {
+  return dayIndex >= 1 && dayIndex <= 5;
+}
+
+function toTimeLabel(minutes) {
+  const normalized = minutes % 1440;
+  const hour = String(Math.floor(normalized / 60)).padStart(2, "0");
+  const minute = String(normalized % 60).padStart(2, "0");
+  return `${hour}:${minute}`;
 }
