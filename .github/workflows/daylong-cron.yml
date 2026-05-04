@@ -2,12 +2,19 @@ name: DayLong Push Cron
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 jobs:
   notify:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - name: Trigger DayLong push cron
-        run: curl --fail --silent --show-error https://daylong77.vercel.app/api/cron
+        run: |
+          for i in {1..7}; do
+            curl --fail --silent --show-error https://daylong77.vercel.app/api/cron
+            if [ "$i" -lt 7 ]; then
+              sleep 300
+            fi
+          done
