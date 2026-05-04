@@ -508,6 +508,15 @@ h2 {
   color: var(--accent-strong);
 }
 
+.notify-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.test-button {
+  color: var(--text);
+}
+
 .timeline {
   display: grid;
   gap: 0;

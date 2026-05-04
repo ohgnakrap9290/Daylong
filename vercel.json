@@ -1,5 +1,10 @@
 {
   "cleanUrls": true,
+  "functions": {
+    "api/test-push.js": {
+      "maxDuration": 60
+    }
+  },
   "headers": [
     {
       "source": "/manifest.webmanifest",

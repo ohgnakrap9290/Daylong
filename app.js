@@ -29,6 +29,7 @@ const els = {
   doneCount: document.querySelector("#doneCount"),
   progressFill: document.querySelector("#progressFill"),
   notifyToggle: document.querySelector("#notifyToggle"),
+  testPush: document.querySelector("#testPush"),
   colorSwatches: document.querySelectorAll(".swatch"),
   tabs: document.querySelectorAll(".tab"),
   views: document.querySelectorAll(".view"),
@@ -103,6 +104,7 @@ function bindEvents() {
   });
 
   els.notifyToggle.addEventListener("click", enableNotifications);
+  els.testPush.addEventListener("click", sendTestPush);
 
   els.routineReminderTime.addEventListener("change", () => {
     state.routineReminderTime = els.routineReminderTime.value || "20:00";
@@ -572,11 +574,54 @@ async function syncPushSubscription() {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.error || "Subscription sync failed.");
   }
+
+  return subscription;
 }
 
 function syncServerPushIfReady() {
   if (!state.notificationsEnabled || !("Notification" in window) || Notification.permission !== "granted") return;
   syncPushSubscription().catch(() => {});
+}
+
+async function sendTestPush() {
+  if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+    setTestPushStatus("미지원");
+    return;
+  }
+
+  setTestPushStatus("준비 중");
+
+  try {
+    if (!state.notificationsEnabled || Notification.permission !== "granted") {
+      await enableNotifications();
+    }
+
+    const subscription = await syncPushSubscription();
+    if (!subscription) throw new Error("Push subscription is not ready.");
+
+    const payload = JSON.stringify({ subscription });
+    const blob = new Blob([payload], { type: "application/json" });
+    const queued = "sendBeacon" in navigator && navigator.sendBeacon("/api/test-push", blob);
+
+    if (!queued) {
+      fetch("/api/test-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        keepalive: true,
+      }).catch(() => {});
+    }
+
+    setTestPushStatus("30초 뒤 도착");
+    setTimeout(() => setTestPushStatus("30초 테스트"), 35 * 1000);
+  } catch (error) {
+    setTestPushStatus("실패");
+    setTimeout(() => setTestPushStatus("30초 테스트"), 2500);
+  }
+}
+
+function setTestPushStatus(label) {
+  els.testPush.textContent = label;
 }
 
 function urlBase64ToUint8Array(value) {
