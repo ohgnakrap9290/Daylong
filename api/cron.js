@@ -28,10 +28,7 @@ export default async function handler(request, response) {
     const now = getKstNow();
     const schedule = readSchedule();
     const todayEvents = schedule.find((day) => day.index === now.day)?.events || [];
-    const dueEvents = todayEvents.filter((event) => {
-      const notifyAt = event.start - 10;
-      return notifyAt <= now.minutes && notifyAt > now.minutes - 6;
-    });
+    const dueEvents = getDueEvents(todayEvents, now.minutes);
 
     let sent = 0;
     let removed = 0;
@@ -44,7 +41,7 @@ export default async function handler(request, response) {
 
         const ok = await sendPush(record, {
           title: `${event.startLabel} ${event.title}`,
-          body: "10분 뒤 시작하는 일정입니다.",
+          body: `${event.start - now.minutes}분 뒤 시작하는 일정입니다.`,
           url: "/",
         });
         if (ok === "removed") removed += 1;
@@ -60,6 +57,13 @@ export default async function handler(request, response) {
   } catch (error) {
     response.status(500).json({ error: error.message });
   }
+}
+
+function getDueEvents(events, nowMinutes) {
+  return events.filter((event) => {
+    if (event.start < 10) return false;
+    return event.start > nowMinutes && event.start <= nowMinutes + 10;
+  });
 }
 
 async function markOnce(key) {
@@ -92,7 +96,7 @@ async function sendPush(record, payload) {
 async function maybeSendRoutineReminder(record, now) {
   const reminderTime = record.routineReminderTime || "20:00";
   const reminderMinutes = toMinutes(reminderTime);
-  if (reminderMinutes > now.minutes || reminderMinutes <= now.minutes - 6) return false;
+  if (reminderMinutes > now.minutes || reminderMinutes <= now.minutes - 16) return false;
 
   const key = `daylong:sent:${now.dateKey}:${record.id}:routine:${reminderTime}`;
   const firstSend = await markOnce(key);
