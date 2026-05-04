@@ -508,15 +508,6 @@ h2 {
   color: var(--accent-strong);
 }
 
-.notify-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.test-button {
-  color: var(--text);
-}
-
 .timeline {
   display: grid;
   gap: 0;
@@ -644,6 +635,11 @@ h2 {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
+}
+
+.event:not(.is-sleep) .event-card,
+.mini-event:not(.is-sleep) .event-card {
+  cursor: pointer;
 }
 
 .event.is-current .event-card {

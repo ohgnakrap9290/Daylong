@@ -29,7 +29,6 @@ const els = {
   doneCount: document.querySelector("#doneCount"),
   progressFill: document.querySelector("#progressFill"),
   notifyToggle: document.querySelector("#notifyToggle"),
-  testPush: document.querySelector("#testPush"),
   colorSwatches: document.querySelectorAll(".swatch"),
   tabs: document.querySelectorAll(".tab"),
   views: document.querySelectorAll(".view"),
@@ -87,6 +86,9 @@ function bindEvents() {
     tab.addEventListener("click", () => {
       state.activeView = tab.dataset.view === "routine" ? "today" : tab.dataset.view;
       render();
+      if (tab.dataset.view === "today") {
+        scrollToCurrentTimeline();
+      }
       if (tab.dataset.view === "routine") {
         requestAnimationFrame(() => {
           els.routinePanel.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -104,7 +106,6 @@ function bindEvents() {
   });
 
   els.notifyToggle.addEventListener("click", enableNotifications);
-  els.testPush.addEventListener("click", sendTestPush);
 
   els.routineReminderTime.addEventListener("change", () => {
     state.routineReminderTime = els.routineReminderTime.value || "20:00";
@@ -246,7 +247,7 @@ function renderToday(now) {
   }
 
   els.todayTimeline.innerHTML = todayEvents.map((event) => eventTemplate(event, now, "event")).join("");
-  els.todayTimeline.querySelectorAll(".check").forEach(bindCheckButton);
+  bindTimelineChecks(els.todayTimeline);
   renderRoutines(now);
   updateProgress(todayEvents);
   updateNowTask(todayEvents, now);
@@ -304,7 +305,7 @@ function renderWeek() {
     })
     .join("");
 
-  els.weekList.querySelectorAll(".check").forEach(bindCheckButton);
+  bindTimelineChecks(els.weekList);
   if (state.activeView === "week") {
     document.querySelector(`#day-${state.selectedDay}`)?.scrollIntoView({ block: "nearest" });
   }
@@ -332,13 +333,27 @@ function eventTemplate(event, now, className) {
   </${tag}>`;
 }
 
-function bindCheckButton(button) {
-  button.addEventListener("click", () => {
-    const id = button.dataset.id;
-    state.checks[id] = !state.checks[id];
-    if (!state.checks[id]) delete state.checks[id];
-    saveChecks();
-    render();
+function bindTimelineChecks(container) {
+  container.querySelectorAll(".event:not(.is-sleep), .mini-event:not(.is-sleep)").forEach((item) => {
+    item.addEventListener("click", () => {
+      const id = item.querySelector(".check")?.dataset.id;
+      if (!id) return;
+      toggleEventCheck(id);
+    });
+  });
+}
+
+function toggleEventCheck(id) {
+  state.checks[id] = !state.checks[id];
+  if (!state.checks[id]) delete state.checks[id];
+  saveChecks();
+  render();
+}
+
+function scrollToCurrentTimeline() {
+  requestAnimationFrame(() => {
+    const target = els.todayTimeline.querySelector(".event.is-current") || els.todayTimeline.querySelector(".event:not(.is-sleep)");
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
   });
 }
 
@@ -581,47 +596,6 @@ async function syncPushSubscription() {
 function syncServerPushIfReady() {
   if (!state.notificationsEnabled || !("Notification" in window) || Notification.permission !== "granted") return;
   syncPushSubscription().catch(() => {});
-}
-
-async function sendTestPush() {
-  if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-    setTestPushStatus("미지원");
-    return;
-  }
-
-  setTestPushStatus("준비 중");
-
-  try {
-    if (!state.notificationsEnabled || Notification.permission !== "granted") {
-      await enableNotifications();
-    }
-
-    const subscription = await syncPushSubscription();
-    if (!subscription) throw new Error("Push subscription is not ready.");
-
-    const payload = JSON.stringify({ subscription });
-    const blob = new Blob([payload], { type: "application/json" });
-    const queued = "sendBeacon" in navigator && navigator.sendBeacon("/api/test-push", blob);
-
-    if (!queued) {
-      fetch("/api/test-push", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: payload,
-        keepalive: true,
-      }).catch(() => {});
-    }
-
-    setTestPushStatus("30초 뒤 도착");
-    setTimeout(() => setTestPushStatus("30초 테스트"), 35 * 1000);
-  } catch (error) {
-    setTestPushStatus("실패");
-    setTimeout(() => setTestPushStatus("30초 테스트"), 2500);
-  }
-}
-
-function setTestPushStatus(label) {
-  els.testPush.textContent = label;
 }
 
 function urlBase64ToUint8Array(value) {
