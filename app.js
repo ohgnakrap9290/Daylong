@@ -16,6 +16,7 @@ const state = {
   notificationsEnabled: localStorage.getItem("daylong-notifications") === "enabled",
   routineReminderTime: localStorage.getItem("daylong-routine-reminder-time") || "20:00",
   notificationTimers: [],
+  clockTimer: null,
   checks: JSON.parse(localStorage.getItem("daylong-checks") || "{}"),
   routines: JSON.parse(localStorage.getItem("daylong-routines") || "{}"),
 };
@@ -54,6 +55,7 @@ async function init() {
   els.routineReminderTime.value = state.routineReminderTime;
   bindEvents();
   preventDoubleTapZoom();
+  bindLifecycleRefresh();
 
   try {
     const text = await fetch("data.txt", { cache: "no-store" }).then((res) => {
@@ -65,10 +67,14 @@ async function init() {
       state.schedule = parseSchedule(getFallbackText());
     }
     render();
+    startClockRefresh();
+    syncServerPushIfReady();
   } catch (error) {
     state.schedule = parseSchedule(getFallbackText());
     if (hasAnyEvents(state.schedule)) {
       render();
+      startClockRefresh();
+      syncServerPushIfReady();
       return;
     }
     els.todayTimeline.innerHTML = `<li class="empty">${error.message}</li>`;
@@ -184,6 +190,8 @@ function parseSchedule(text) {
 }
 
 function render() {
+  if (!hasAnyEvents(state.schedule)) return;
+
   const now = new Date();
   state.selectedDay = state.activeView === "today" ? now.getDay() : state.selectedDay;
   const dateText = new Intl.DateTimeFormat("ko-KR", {
@@ -199,6 +207,28 @@ function render() {
   renderToday(now);
   renderWeek();
   scheduleUpcomingNotifications(now);
+}
+
+function startClockRefresh() {
+  if (state.clockTimer) return;
+
+  state.clockTimer = setInterval(() => {
+    render();
+  }, 30 * 1000);
+}
+
+function bindLifecycleRefresh() {
+  const refresh = () => {
+    if (!hasAnyEvents(state.schedule)) return;
+    render();
+    syncServerPushIfReady();
+  };
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refresh();
+  });
+  window.addEventListener("focus", refresh);
+  window.addEventListener("pageshow", refresh);
 }
 
 function renderToday(now) {
@@ -544,6 +574,11 @@ async function syncPushSubscription() {
   }
 }
 
+function syncServerPushIfReady() {
+  if (!state.notificationsEnabled || !("Notification" in window) || Notification.permission !== "granted") return;
+  syncPushSubscription().catch(() => {});
+}
+
 function urlBase64ToUint8Array(value) {
   const padding = "=".repeat((4 - (value.length % 4)) % 4);
   const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -559,7 +594,10 @@ function urlBase64ToUint8Array(value) {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator) || location.protocol !== "https:") return;
-  navigator.serviceWorker.register("sw.js").catch(() => {});
+  navigator.serviceWorker
+    .register("sw.js")
+    .then((registration) => registration.update().catch(() => {}))
+    .catch(() => {});
 }
 
 function preventDoubleTapZoom() {
