@@ -2,19 +2,21 @@ name: DayLong Push Cron
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "17 */3 * * *"
   workflow_dispatch:
 
 jobs:
   notify:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 220
     steps:
       - name: Trigger DayLong push cron
         run: |
-          for i in {1..7}; do
+          for i in {1..100}; do
+            echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] push check $i/100"
             curl --fail --silent --show-error https://daylong77.vercel.app/api/cron
-            if [ "$i" -lt 7 ]; then
-              sleep 300
+            echo
+            if [ "$i" -lt 100 ]; then
+              sleep 120
             fi
           done
